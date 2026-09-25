@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.onepieceapi"
-version = "0.1.0"
+version = "0.2.0"
 description = "One Piece API - shared application exception handling library"
 
 java {
@@ -40,6 +40,9 @@ dependencies {
 	// Gradle still puts it on their runtime classpath.
 	implementation("org.springframework.boot:spring-boot-autoconfigure")
 	compileOnly("jakarta.servlet:jakarta.servlet-api")
+	// Optional: ProblemDetailOpenApiAutoConfiguration only activates when the consuming
+	// service already uses springdoc - never forced onto services that don't.
+	compileOnly("org.springdoc:springdoc-openapi-starter-common:3.1.1")
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	testCompileOnly("org.projectlombok:lombok")
@@ -47,6 +50,7 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation")
+	testImplementation("org.springdoc:springdoc-openapi-starter-common:3.1.1")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 

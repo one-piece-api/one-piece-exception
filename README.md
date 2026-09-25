@@ -14,6 +14,10 @@ auto-configuration that maps one to the other. Design rationale: `docs/adr/0001-
   registry to coordinate with other services.
 - `ApplicationExceptionHandler` and `TraceIdFilter`, auto-registered once the dependency
   is on the classpath — no manual `@Bean` wiring.
+- If the service uses springdoc, a `ProblemDetailOpenApiCustomizer` (also auto-registered)
+  documents this error contract in its OpenAPI spec: the `ProblemDetail` schema plus a
+  `4XX`/`5XX` `application/problem+json` response on every operation
+  (`docs/adr/0002-openapi-error-contract.md`).
 
 Every error response is a standard RFC 7807 `ProblemDetail`, extended with `errorCode`,
 `traceId`, `timestamp`, and — for validation failures — a per-field `errors` array:

@@ -1,1 +1,2 @@
 dev.onepieceapi.exception.web.autoconfigure.ExceptionHandlingAutoConfiguration
+dev.onepieceapi.exception.web.autoconfigure.ProblemDetailOpenApiAutoConfiguration
