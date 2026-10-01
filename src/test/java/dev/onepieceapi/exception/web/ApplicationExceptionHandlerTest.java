@@ -119,6 +119,23 @@ class ApplicationExceptionHandlerTest {
 	}
 
 	@Test
+	void reportsAFieldThatCouldNotBeConvertedWithoutNamingInternalClasses() throws Exception {
+		this.mockMvc.perform(get("/stub/filtered").param("status", "NOPE"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"))
+			.andExpect(jsonPath("$.errors[0].field").value("status"))
+			.andExpect(jsonPath("$.errors[0].message").value("invalid value"));
+	}
+
+	@Test
+	void keepsTheMessageOfAConstraintViolatedByAField() throws Exception {
+		this.mockMvc.perform(get("/stub/filtered").param("days", "-1"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[0].field").value("days"))
+			.andExpect(jsonPath("$.errors[0].message").value("must be greater than or equal to 0"));
+	}
+
+	@Test
 	void aValidRequestWithParametersIsNotAffected() throws Exception {
 		var request = get("/stub/search").param("days", "3").param("status", "OPEN");
 		this.mockMvc.perform(request).andExpect(status().isOk());
@@ -166,6 +183,9 @@ class ApplicationExceptionHandlerTest {
 
 	}
 
+	record Filters(StubStatus status, @PositiveOrZero Integer days) {
+	}
+
 	record ValidatedBody(@NotBlank String name) {
 	}
 
@@ -186,6 +206,10 @@ class ApplicationExceptionHandlerTest {
 		@PostMapping("/boom")
 		void boom() {
 			throw new IllegalStateException("kaboom");
+		}
+
+		@GetMapping("/filtered")
+		void filtered(@Validated Filters filters) {
 		}
 
 		@GetMapping("/search")

@@ -117,15 +117,21 @@ public class ApplicationExceptionHandler {
 	private static Stream<FieldViolation> parameterViolations(ParameterValidationResult result) {
 		String parameterName = result.getMethodParameter().getParameterName();
 		return result.getResolvableErrors().stream().map(error -> {
-			String name = error instanceof FieldError fieldError ? fieldError.getField() : parameterName;
+			if (error instanceof FieldError fieldError) {
+				return new FieldViolation(fieldError.getField(), fieldErrorMessage(fieldError));
+			}
 			String message = error.getDefaultMessage();
-			return new FieldViolation(name, message != null ? message : INVALID_VALUE);
+			return new FieldViolation(parameterName, message != null ? message : INVALID_VALUE);
 		});
 	}
 
+	/**
+	 * A value that could not be converted to the type of its field is reported as just
+	 * that: the message Spring builds for it names internal classes.
+	 */
 	private static String fieldErrorMessage(FieldError fieldError) {
 		String message = fieldError.getDefaultMessage();
-		return message != null ? message : INVALID_VALUE;
+		return fieldError.isBindingFailure() || message == null ? INVALID_VALUE : message;
 	}
 
 	private ProblemDetail validationFailed(List<FieldViolation> violations, HttpServletRequest request) {

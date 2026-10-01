@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.onepieceapi"
-version = "0.3.0"
+version = "0.3.1"
 description = "One Piece API - shared application exception handling library"
 
 java {
