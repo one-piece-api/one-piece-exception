@@ -10,13 +10,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.net.URI;
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Translates every exception a controller can throw into the standard
@@ -32,7 +37,8 @@ import java.util.List;
  * <ul>
  * <li>{@link ApplicationException} (and every service-specific subclass of it) - status
  * and error code come straight from the exception.</li>
- * <li>Bean Validation / malformed request body failures raised by Spring MVC itself -
+ * <li>Request-shape failures raised by Spring MVC itself - Bean Validation on a body or
+ * on a method parameter, a parameter of the wrong type or missing, a malformed body -
  * mapped to {@link CommonErrorCode#VALIDATION_FAILED}, with per-field detail when
  * available.</li>
  * <li>Anything else - an unanticipated failure, logged with its stack trace and returned
@@ -43,6 +49,8 @@ import java.util.List;
 @RestControllerAdvice
 @Slf4j
 public class ApplicationExceptionHandler {
+
+	private static final String INVALID_VALUE = "invalid value";
 
 	@ExceptionHandler(ApplicationException.class)
 	ProblemDetail handleApplicationException(ApplicationException ex, HttpServletRequest request) {
@@ -59,10 +67,34 @@ public class ApplicationExceptionHandler {
 			.stream()
 			.map(fieldError -> new FieldViolation(fieldError.getField(), fieldErrorMessage(fieldError)))
 			.toList();
-		ProblemDetail problem = problemDetail(HttpStatus.BAD_REQUEST, "Validation failed",
-				CommonErrorCode.VALIDATION_FAILED, request);
-		problem.setProperty("errors", violations);
-		return problem;
+		return validationFailed(violations, request);
+	}
+
+	/**
+	 * A constraint annotation on a controller method parameter (a query parameter, a path
+	 * variable, a resolved argument such as a {@code Pageable}) was violated.
+	 */
+	@ExceptionHandler(HandlerMethodValidationException.class)
+	ProblemDetail handleParameterValidation(HandlerMethodValidationException ex, HttpServletRequest request) {
+		List<FieldViolation> violations = ex.getParameterValidationResults()
+			.stream()
+			.flatMap(ApplicationExceptionHandler::parameterViolations)
+			.toList();
+		return validationFailed(violations, request);
+	}
+
+	/**
+	 * A query parameter or path variable could not be converted to its type, e.g. a
+	 * malformed UUID or an unknown enum value.
+	 */
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+		return validationFailed(List.of(new FieldViolation(ex.getName(), INVALID_VALUE)), request);
+	}
+
+	@ExceptionHandler(MissingServletRequestParameterException.class)
+	ProblemDetail handleMissingParameter(MissingServletRequestParameterException ex, HttpServletRequest request) {
+		return validationFailed(List.of(new FieldViolation(ex.getParameterName(), "is required")), request);
 	}
 
 	@ExceptionHandler(HttpMessageNotReadableException.class)
@@ -78,9 +110,29 @@ public class ApplicationExceptionHandler {
 				CommonErrorCode.INTERNAL_ERROR, request);
 	}
 
+	/**
+	 * The violations of one parameter: named after the field when the parameter is an
+	 * object validated field by field, after the parameter itself otherwise.
+	 */
+	private static Stream<FieldViolation> parameterViolations(ParameterValidationResult result) {
+		String parameterName = result.getMethodParameter().getParameterName();
+		return result.getResolvableErrors().stream().map(error -> {
+			String name = error instanceof FieldError fieldError ? fieldError.getField() : parameterName;
+			String message = error.getDefaultMessage();
+			return new FieldViolation(name, message != null ? message : INVALID_VALUE);
+		});
+	}
+
 	private static String fieldErrorMessage(FieldError fieldError) {
 		String message = fieldError.getDefaultMessage();
-		return message != null ? message : "invalid value";
+		return message != null ? message : INVALID_VALUE;
+	}
+
+	private ProblemDetail validationFailed(List<FieldViolation> violations, HttpServletRequest request) {
+		ProblemDetail problem = problemDetail(HttpStatus.BAD_REQUEST, "Validation failed",
+				CommonErrorCode.VALIDATION_FAILED, request);
+		problem.setProperty("errors", violations);
+		return problem;
 	}
 
 	private ProblemDetail problemDetail(HttpStatus status, String detail, ErrorCode errorCode,

@@ -4,6 +4,7 @@ import dev.onepieceapi.exception.ConflictException;
 import dev.onepieceapi.exception.DomainException;
 import dev.onepieceapi.exception.ErrorCode;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,12 +13,18 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -84,6 +91,40 @@ class ApplicationExceptionHandlerTest {
 	}
 
 	@Test
+	void mapsAConstraintViolatedByAParameterToAViolationNamedAfterIt() throws Exception {
+		this.mockMvc.perform(get("/stub/search").param("days", "-1"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"))
+			.andExpect(jsonPath("$.errors[0].field").value("days"))
+			.andExpect(jsonPath("$.errors[0].message").value(notNullValue()));
+	}
+
+	@Test
+	void mapsAParameterOfTheWrongTypeToValidationFailed() throws Exception {
+		this.mockMvc.perform(get("/stub/items/not-a-uuid"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"))
+			.andExpect(jsonPath("$.errors[0].field").value("id"));
+		this.mockMvc.perform(get("/stub/search").param("days", "1").param("status", "NOPE"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errors[0].field").value("status"));
+	}
+
+	@Test
+	void mapsAMissingRequiredParameterToValidationFailed() throws Exception {
+		this.mockMvc.perform(get("/stub/search"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.errorCode").value("VALIDATION_FAILED"))
+			.andExpect(jsonPath("$.errors[0].field").value("days"));
+	}
+
+	@Test
+	void aValidRequestWithParametersIsNotAffected() throws Exception {
+		var request = get("/stub/search").param("days", "3").param("status", "OPEN");
+		this.mockMvc.perform(request).andExpect(status().isOk());
+	}
+
+	@Test
 	void mapsAnUnexpectedExceptionToAGenericInternalError() throws Exception {
 		this.mockMvc.perform(post("/stub/boom"))
 			.andExpect(status().isInternalServerError())
@@ -119,6 +160,12 @@ class ApplicationExceptionHandlerTest {
 
 	}
 
+	enum StubStatus {
+
+		OPEN, CLOSED
+
+	}
+
 	record ValidatedBody(@NotBlank String name) {
 	}
 
@@ -139,6 +186,14 @@ class ApplicationExceptionHandlerTest {
 		@PostMapping("/boom")
 		void boom() {
 			throw new IllegalStateException("kaboom");
+		}
+
+		@GetMapping("/search")
+		void search(@RequestParam @PositiveOrZero int days, @RequestParam(required = false) StubStatus status) {
+		}
+
+		@GetMapping("/items/{id}")
+		void item(@PathVariable UUID id) {
 		}
 
 		@PostMapping("/validated")

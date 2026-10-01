@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.onepieceapi"
-version = "0.2.0"
+version = "0.3.0"
 description = "One Piece API - shared application exception handling library"
 
 java {
@@ -52,6 +52,12 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-validation")
 	testImplementation("org.springdoc:springdoc-openapi-starter-common:3.1.1")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+// Keeps parameter names in the bytecode, as Spring Boot's Gradle plugin does for the services
+// using this library: the handler names a violated parameter after them.
+tasks.withType<JavaCompile> {
+	options.compilerArgs.add("-parameters")
 }
 
 tasks.withType<Test> {

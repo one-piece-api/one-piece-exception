@@ -20,7 +20,10 @@ auto-configuration that maps one to the other. Design rationale: `docs/adr/0001-
   (`docs/adr/0002-openapi-error-contract.md`).
 
 Every error response is a standard RFC 7807 `ProblemDetail`, extended with `errorCode`,
-`traceId`, `timestamp`, and — for validation failures — a per-field `errors` array:
+`traceId`, `timestamp`, and — for validation failures — a per-field `errors` array. A
+validation failure (`400`, `VALIDATION_FAILED`) is any request Spring MVC refuses for its
+shape: Bean Validation on a body or on a method parameter, a query parameter or path variable
+of the wrong type, a missing required parameter, a malformed body. An example of a response:
 
 ```json
 {
