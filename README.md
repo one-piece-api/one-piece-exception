@@ -18,6 +18,9 @@ auto-configuration that maps one to the other. Design rationale: `docs/adr/0001-
   documents this error contract in its OpenAPI spec: the `ProblemDetail` schema plus a
   `4XX`/`5XX` `application/problem+json` response on every operation
   (`docs/adr/0002-openapi-error-contract.md`).
+- If the service has Spring's data access abstraction (`spring-tx`), an optimistic locking
+  failure (`OptimisticLockingFailureException`, e.g. a JPA `@Version` mismatch) answers
+  `409` `CONCURRENT_MODIFICATION`: the row changed in the meantime, read it again.
 
 Every error response is a standard RFC 7807 `ProblemDetail`, extended with `errorCode`,
 `traceId`, `timestamp`, and — for validation failures — a per-field `errors` array. A

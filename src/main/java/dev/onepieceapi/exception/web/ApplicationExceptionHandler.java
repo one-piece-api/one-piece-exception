@@ -141,7 +141,8 @@ public class ApplicationExceptionHandler {
 		return problem;
 	}
 
-	private ProblemDetail problemDetail(HttpStatus status, String detail, ErrorCode errorCode,
+	/** The standard error body - shared with the other handlers of this package. */
+	static ProblemDetail problemDetail(HttpStatus status, String detail, ErrorCode errorCode,
 			HttpServletRequest request) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);
 		problem.setInstance(URI.create(request.getRequestURI()));

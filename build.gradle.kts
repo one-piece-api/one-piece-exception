@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "dev.onepieceapi"
-version = "0.3.1"
+version = "0.4.0"
 description = "One Piece API - shared application exception handling library"
 
 java {
@@ -43,6 +43,9 @@ dependencies {
 	// Optional: ProblemDetailOpenApiAutoConfiguration only activates when the consuming
 	// service already uses springdoc - never forced onto services that don't.
 	compileOnly("org.springdoc:springdoc-openapi-starter-common:3.1.1")
+	// Optional: ConcurrentModificationAutoConfiguration only activates when the consuming
+	// service already has Spring's data access abstraction - never forced onto services that don't.
+	compileOnly("org.springframework:spring-tx")
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	testCompileOnly("org.projectlombok:lombok")
@@ -51,6 +54,7 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc")
 	testImplementation("org.springframework.boot:spring-boot-starter-validation")
 	testImplementation("org.springdoc:springdoc-openapi-starter-common:3.1.1")
+	testImplementation("org.springframework:spring-tx")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
