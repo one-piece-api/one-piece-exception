@@ -26,7 +26,9 @@ Every error response is a standard RFC 7807 `ProblemDetail`, extended with `erro
 `traceId`, `timestamp`, and — for validation failures — a per-field `errors` array. A
 validation failure (`400`, `VALIDATION_FAILED`) is any request Spring MVC refuses for its
 shape: Bean Validation on a body or on a method parameter, a query parameter or path variable
-of the wrong type, a missing required parameter, a malformed body. An example of a response:
+of the wrong type, a missing required parameter, a malformed body. A request Spring MVC cannot
+route answers `404` `NOT_FOUND` (nothing at that path) or `405` `METHOD_NOT_ALLOWED` (not with
+that method; the `Allow` header lists the ones that work). An example of a response:
 
 ```json
 {

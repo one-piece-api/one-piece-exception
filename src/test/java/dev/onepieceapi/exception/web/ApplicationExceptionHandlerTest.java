@@ -26,6 +26,8 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -139,6 +141,23 @@ class ApplicationExceptionHandlerTest {
 	void aValidRequestWithParametersIsNotAffected() throws Exception {
 		var request = get("/stub/search").param("days", "3").param("status", "OPEN");
 		this.mockMvc.perform(request).andExpect(status().isOk());
+	}
+
+	@Test
+	void mapsAPathNothingIsMappedToToNotFound() throws Exception {
+		this.mockMvc.perform(get("/nowhere"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.errorCode").value("NOT_FOUND"))
+			.andExpect(jsonPath("$.instance").value("/nowhere"));
+	}
+
+	@Test
+	void mapsAMethodNotMappedOnAnExistingPathToMethodNotAllowedListingTheAllowedOnes() throws Exception {
+		this.mockMvc.perform(put("/stub/conflict"))
+			.andExpect(status().isMethodNotAllowed())
+			.andExpect(header().string("Allow", "POST"))
+			.andExpect(jsonPath("$.errorCode").value("METHOD_NOT_ALLOWED"))
+			.andExpect(jsonPath("$.detail").value("Method PUT is not allowed on this path"));
 	}
 
 	@Test

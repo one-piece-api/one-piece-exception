@@ -8,15 +8,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterValidationResult;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.net.URI;
 import java.time.Instant;
@@ -41,6 +45,9 @@ import java.util.stream.Stream;
  * on a method parameter, a parameter of the wrong type or missing, a malformed body -
  * mapped to {@link CommonErrorCode#VALIDATION_FAILED}, with per-field detail when
  * available.</li>
+ * <li>A request Spring MVC cannot route - no resource at the path
+ * ({@link CommonErrorCode#NOT_FOUND}), or not with this method
+ * ({@link CommonErrorCode#METHOD_NOT_ALLOWED}).</li>
  * <li>Anything else - an unanticipated failure, logged with its stack trace and returned
  * as a generic {@link CommonErrorCode#INTERNAL_ERROR} with no exception detail leaked to
  * the client.</li>
@@ -101,6 +108,25 @@ public class ApplicationExceptionHandler {
 	ProblemDetail handleMalformedBody(HttpMessageNotReadableException ex, HttpServletRequest request) {
 		return problemDetail(HttpStatus.BAD_REQUEST, "The request body could not be read",
 				CommonErrorCode.VALIDATION_FAILED, request);
+	}
+
+	/** Nothing is mapped at this path: no controller, no static resource. */
+	@ExceptionHandler({ NoResourceFoundException.class, NoHandlerFoundException.class })
+	ProblemDetail handleNotFound(Exception ex, HttpServletRequest request) {
+		return problemDetail(HttpStatus.NOT_FOUND, "Unknown path", CommonErrorCode.NOT_FOUND, request);
+	}
+
+	/**
+	 * The path exists, the method does not: the {@code Allow} header lists the ones that
+	 * do.
+	 */
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	ResponseEntity<ProblemDetail> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex,
+			HttpServletRequest request) {
+		HttpStatus status = HttpStatus.METHOD_NOT_ALLOWED;
+		String detail = "Method " + ex.getMethod() + " is not allowed on this path";
+		ProblemDetail problem = problemDetail(status, detail, CommonErrorCode.METHOD_NOT_ALLOWED, request);
+		return ResponseEntity.status(status).headers(ex.getHeaders()).body(problem);
 	}
 
 	@ExceptionHandler(Exception.class)
