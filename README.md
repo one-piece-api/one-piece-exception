@@ -28,7 +28,8 @@ validation failure (`400`, `VALIDATION_FAILED`) is any request Spring MVC refuse
 shape: Bean Validation on a body or on a method parameter, a query parameter or path variable
 of the wrong type, a missing required parameter, a malformed body. A request Spring MVC cannot
 route answers `404` `NOT_FOUND` (nothing at that path) or `405` `METHOD_NOT_ALLOWED` (not with
-that method; the `Allow` header lists the ones that work). An example of a response:
+that method; the `Allow` header lists the ones that work). A multipart upload over the
+service's configured limits answers `413` `CONTENT_TOO_LARGE`, with the limit as `maxBytes` when known. An example of a response:
 
 ```json
 {

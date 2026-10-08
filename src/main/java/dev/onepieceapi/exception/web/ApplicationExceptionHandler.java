@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -127,6 +128,21 @@ public class ApplicationExceptionHandler {
 		String detail = "Method " + ex.getMethod() + " is not allowed on this path";
 		ProblemDetail problem = problemDetail(status, detail, CommonErrorCode.METHOD_NOT_ALLOWED, request);
 		return ResponseEntity.status(status).headers(ex.getHeaders()).body(problem);
+	}
+
+	/**
+	 * A multipart request over the configured limits
+	 * ({@code spring.servlet.multipart.max-file-size} / {@code max-request-size}),
+	 * refused before any controller sees it; the limit, when known, as {@code maxBytes}.
+	 */
+	@ExceptionHandler(MaxUploadSizeExceededException.class)
+	ProblemDetail handleUploadTooLarge(MaxUploadSizeExceededException ex, HttpServletRequest request) {
+		ProblemDetail problem = problemDetail(HttpStatus.CONTENT_TOO_LARGE, "The upload is too large",
+				CommonErrorCode.CONTENT_TOO_LARGE, request);
+		if (ex.getMaxUploadSize() > 0) {
+			problem.setProperty("maxBytes", ex.getMaxUploadSize());
+		}
+		return problem;
 	}
 
 	@ExceptionHandler(Exception.class)

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -161,6 +162,14 @@ class ApplicationExceptionHandlerTest {
 	}
 
 	@Test
+	void mapsAnUploadOverTheLimitTo413WithTheLimit() throws Exception {
+		this.mockMvc.perform(post("/stub/too-large"))
+			.andExpect(status().is(413))
+			.andExpect(jsonPath("$.errorCode").value("CONTENT_TOO_LARGE"))
+			.andExpect(jsonPath("$.maxBytes").value(5242880));
+	}
+
+	@Test
 	void mapsAnUnexpectedExceptionToAGenericInternalError() throws Exception {
 		this.mockMvc.perform(post("/stub/boom"))
 			.andExpect(status().isInternalServerError())
@@ -220,6 +229,11 @@ class ApplicationExceptionHandlerTest {
 		@PostMapping("/domain")
 		void domain() {
 			throw new StubDomainException();
+		}
+
+		@PostMapping("/too-large")
+		void tooLarge() {
+			throw new MaxUploadSizeExceededException(5_242_880);
 		}
 
 		@PostMapping("/boom")
